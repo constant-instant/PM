@@ -1,0 +1,70 @@
+from pulp import LpProblem, LpVariable, lpSum, LpMinimize, value
+
+# Данные
+employees = ['Сотрудник 1', 'Сотрудник 2', 'Сотрудник 3']
+tasks = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12']
+hours = [8, 13, 8, 8, 13, 8, 8, 13, 13, 5, 5, 8]  # На основе покера
+
+# Матрица предпочтений (1-12, 1 - лучшее)
+pref = [
+    [1, 4, 2, 3, 6, 5, 7, 8, 9, 10, 11, 12],
+    [3, 1, 4, 2, 5, 6, 8, 7, 10, 9, 12, 11],
+    [2, 3, 1, 4, 7, 8, 6, 5, 11, 12, 9, 10]
+]
+
+# Функция преобразования предпочтения в коэффициент (0.2 - сильное влияние)
+def pref_to_coef(p):
+    return 1 + 0.2 * (p - 1)
+
+# Модель
+prob = LpProblem("Phase2_Assignment_With_Poker", LpMinimize)
+x = LpVariable.dicts("x", (range(3), range(12)), 0, 1, 'Binary')
+
+# Целевая функция
+prob += lpSum(
+    hours[j] * pref_to_coef(pref[i][j]) * x[i][j]
+    for i in range(3) for j in range(12)
+)
+
+# Ограничение 1: каждая задача — одному
+for j in range(12):
+    prob += lpSum(x[i][j] for i in range(3)) == 1
+
+# Ограничение 2: нагрузка ≤ 40 часов
+for i in range(3):
+    prob += lpSum(hours[j] * x[i][j] for j in range(12)) <= 40
+
+# Решение
+prob.solve()
+
+# Вывод
+print("РАСПРЕДЕЛЕНИЕ ЗАДАЧ ФАЗЫ 3 (С УЧЁТОМ ПОКЕРА ПЛАНИРОВАНИЯ)")
+print("=" * 70)
+print(f"Общее фактическое время: {sum(hours)} часов")
+print(f"Базовое время на Use Case: 8 часов * коэффициент сложности")
+
+total_weighted = 0
+total_actual = 0
+
+for i in range(3):
+    total_hours = 0
+    weighted_hours = 0
+    print(f"\n{employees[i]}:")
+    for j in range(12):
+        if value(x[i][j]) == 1:
+            weight = pref_to_coef(pref[i][j])
+            actual = hours[j]
+            weighted = actual * weight
+            total_hours += actual
+            weighted_hours += weighted
+            total_actual += actual
+            total_weighted += weighted
+            print(f"  - {tasks[j]}: {actual}ч (предпочтение {pref[i][j]}, вес {weight:.2f})")
+    print(f"  Всего часов: {total_hours}")
+    print(f"  Взвешенное время: {weighted_hours:.1f}ч")
+
+print(f"\nИТОГО:")
+print(f"Фактическое время: {total_actual} часов")
+print(f"Взвешенное время: {total_weighted:.1f} часов")
+print(f"Коэффициент эффективности: {total_weighted/total_actual:.2f}")
+print(f"Срок (3 человека, 8ч/день): {total_actual/24:.1f} рабочих дней") как работает код
